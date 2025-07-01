@@ -2,9 +2,9 @@
   <div
     :class="cn(
       'relative w-full',
-      customClass
+      content.customClass
     )"
-    :style="customStyle"
+    :style="content.customStyle"
     @mouseenter="pauseAutoPlay"
     @mouseleave="resumeAutoPlay"
   >
@@ -15,11 +15,11 @@
         ref="slidesContainer"
         :class="cn(
           'flex transition-transform duration-300 ease-in-out',
-          height === 'sm' ? 'h-48' : '',
-          height === 'md' ? 'h-64' : '',
-          height === 'lg' ? 'h-80' : '',
-          height === 'xl' ? 'h-96' : '',
-          !height ? 'h-64' : ''
+          content.height === 'sm' ? 'h-48' : '',
+          content.height === 'md' ? 'h-64' : '',
+          content.height === 'lg' ? 'h-80' : '',
+          content.height === 'xl' ? 'h-96' : '',
+          !content.height ? 'h-64' : ''
         )"
         :style="{
           transform: `translateX(-${currentIndex * 100}%)`,
@@ -28,7 +28,7 @@
       >
         <!-- Slides -->
         <div
-          v-for="(slide, index) in slides"
+          v-for="(slide, index) in content.slides"
           :key="slide.id || index"
           :class="cn(
             'flex-shrink-0 relative overflow-hidden',
@@ -120,11 +120,11 @@
       </div>
 
       <!-- Navigation arrows -->
-      <div v-if="showArrows !== false && totalSlides > 1">
+      <div v-if="content.showArrows !== false && totalSlides > 1">
         <!-- Previous button -->
         <button
           @click="previousSlide"
-          :disabled="currentIndex === 0 && !loop"
+          :disabled="currentIndex === 0 && !content.loop"
           :class="cn(
             'absolute left-4 top-1/2 -translate-y-1/2 z-10',
             'flex items-center justify-center w-8 h-8 rounded-full bg-background/80 hover:bg-background',
@@ -141,7 +141,7 @@
         <!-- Next button -->
         <button
           @click="nextSlide"
-          :disabled="currentIndex === totalSlides - 1 && !loop"
+          :disabled="currentIndex === totalSlides - 1 && !content.loop"
           :class="cn(
             'absolute right-4 top-1/2 -translate-y-1/2 z-10',
             'flex items-center justify-center w-8 h-8 rounded-full bg-background/80 hover:bg-background',
@@ -159,11 +159,11 @@
 
     <!-- Indicators/Dots -->
     <div
-      v-if="showIndicators !== false && totalSlides > 1"
+      v-if="content.showIndicators !== false && totalSlides > 1"
       class="flex justify-center space-x-2 mt-4"
     >
       <button
-        v-for="(slide, index) in slides"
+        v-for="(slide, index) in content.slides"
         :key="`indicator-${index}`"
         @click="goToSlide(index)"
         :class="cn(
@@ -176,11 +176,11 @@
 
     <!-- Thumbnails -->
     <div
-      v-if="showThumbnails && totalSlides > 1"
+      v-if="content.showThumbnails && totalSlides > 1"
       class="flex justify-center space-x-2 mt-4 overflow-x-auto"
     >
       <button
-        v-for="(slide, index) in slides"
+        v-for="(slide, index) in content.slides"
         :key="`thumb-${index}`"
         @click="goToSlide(index)"
         :class="cn(
@@ -205,7 +205,7 @@
 
     <!-- Auto-play controls -->
     <div
-      v-if="autoPlay && showPlayPause"
+      v-if="content.autoPlay && content.showPlayPause"
       class="absolute bottom-4 right-4 z-10"
     >
       <button
@@ -232,9 +232,11 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 
 export default {
   props: {
-        // Individual props will be auto-generated based on the component type
-        // This is a placeholder that will be manually refined per component
-    },
+    content: {
+      type: Object,
+      default: () => ({})
+    }
+  },
   emits: ['slide-change', 'slide-click', 'slide-action'],
   setup(props, { emit }) {
     // Import utility function
@@ -244,18 +246,18 @@ export default {
 
     const slidesContainer = ref(null)
     const currentIndex = ref(0)
-    const isPlaying = ref(!!props.autoPlay)
+    const isPlaying = ref(!!props.content.autoPlay)
     let autoPlayInterval = null
 
     const totalSlides = computed(() => {
-      return props.slides ? props.slides.length : 0
+      return props.content.slides ? props.content.slides.length : 0
     })
 
     const startAutoPlay = () => {
-      if (props.autoPlay && totalSlides.value > 1) {
+      if (props.content.autoPlay && totalSlides.value > 1) {
         autoPlayInterval = setInterval(() => {
           nextSlide()
-        }, props.autoPlayInterval || 3000)
+        }, props.content.autoPlayInterval || 3000)
       }
     }
 
@@ -267,13 +269,13 @@ export default {
     }
 
     const pauseAutoPlay = () => {
-      if (props.pauseOnHover !== false) {
+      if (props.content.pauseOnHover !== false) {
         stopAutoPlay()
       }
     }
 
     const resumeAutoPlay = () => {
-      if (props.pauseOnHover !== false && isPlaying.value) {
+      if (props.content.pauseOnHover !== false && isPlaying.value) {
         startAutoPlay()
       }
     }
@@ -291,7 +293,7 @@ export default {
     const nextSlide = () => {
       if (currentIndex.value < totalSlides.value - 1) {
         currentIndex.value++
-      } else if (props.loop !== false) {
+      } else if (props.content.loop !== false) {
         currentIndex.value = 0
       }
       
@@ -301,7 +303,7 @@ export default {
     const previousSlide = () => {
       if (currentIndex.value > 0) {
         currentIndex.value--
-      } else if (props.loop !== false) {
+      } else if (props.content.loop !== false) {
         currentIndex.value = totalSlides.value - 1
       }
       
@@ -316,7 +318,7 @@ export default {
     }
 
     const emitSlideChange = () => {
-      const currentSlide = props.slides?.[currentIndex.value]
+      const currentSlide = props.content.slides?.[currentIndex.value]
       emit('slide-change', {
         index: currentIndex.value,
         slide: currentSlide,
@@ -352,7 +354,7 @@ export default {
           break
         case ' ':
           event.preventDefault()
-          if (props.autoPlay) {
+          if (props.content.autoPlay) {
             toggleAutoPlay()
           }
           break
@@ -368,14 +370,14 @@ export default {
     })
 
     // Watch for content changes
-    watch(() => props.slides, () => {
+    watch(() => props.content.slides, () => {
       if (currentIndex.value >= totalSlides.value) {
         currentIndex.value = Math.max(0, totalSlides.value - 1)
       }
     })
 
     onMounted(() => {
-      if (props.autoPlay) {
+      if (props.content.autoPlay) {
         startAutoPlay()
       }
       
