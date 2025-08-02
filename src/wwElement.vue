@@ -1,212 +1,180 @@
 <template>
-  <div
-    class="carousel-root"
-    @click="handleClick"
-    @mouseenter="pauseAutoPlay"
-    @mouseleave="resumeAutoPlay"
-  >
-    <!-- Carousel container -->
-    <div class="carousel-viewport">
-      <!-- Slides container -->
+  <div class="ww-carousel">
+    <div
+      :class="carouselClasses"
+      @click="handleClick"
+      @mouseenter="pauseAutoPlay"
+      @mouseleave="resumeAutoPlay"
+    >
+      <!-- Carousel container -->
+      <div :class="viewportClasses">
+        <!-- Slides container -->
+        <div
+          ref="slidesContainer"
+          :class="slidesClasses"
+          :style="{
+            transform: `translateX(-${currentIndex * 100}%)`,
+            width: `${totalSlides * 100}%`
+          }"
+        >
+          <!-- Slides -->
+          <div
+            v-for="(slide, index) in content.slides || []"
+            :key="slide.id || index"
+            :class="slideClasses"
+            :style="{ width: `${100 / totalSlides}%` }"
+          >
+            <!-- Image slide -->
+            <img
+              v-if="slide.type === 'image' || !slide.type"
+              :src="slide.src"
+              :alt="slide.alt || slide.title || 'Slide image'"
+              :class="imageClasses(slide)"
+              @click="handleSlideClick(slide, index)"
+            />
+            
+            <!-- Video slide -->
+            <video
+              v-else-if="slide.type === 'video'"
+              :src="slide.src"
+              :class="videoClasses(slide)"
+              :controls="slide.showControls !== false"
+              :autoplay="slide.autoplay === true"
+              :muted="slide.muted !== false"
+              :loop="slide.loop === true"
+              @click="handleSlideClick(slide, index)"
+            />
+            
+            <!-- Custom content slide -->
+            <div
+              v-else-if="slide.type === 'content'"
+              :class="contentSlideClasses(slide)"
+              :style="slide.contentStyle"
+              @click="handleSlideClick(slide, index)"
+            >
+              <div class="ww-carousel__content-inner">
+                <h3 v-if="slide.title" class="ww-carousel__content-title">
+                  {{ slide.title }}
+                </h3>
+                <p v-if="slide.description" class="ww-carousel__content-description">
+                  {{ slide.description }}
+                </p>
+                <div v-if="slide.htmlContent" v-html="slide.htmlContent" />
+                
+                <!-- Action button -->
+                <button
+                  v-if="slide.actionLabel"
+                  @click.stop="handleSlideAction(slide, index)"
+                  :class="actionButtonClasses(slide)"
+                >
+                  {{ slide.actionLabel }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Slide overlay -->
+            <div
+              v-if="slide.overlay && (slide.title || slide.description)"
+              :class="overlayClasses(slide)"
+            >
+              <div class="ww-carousel__overlay-content">
+                <h3 v-if="slide.title" class="ww-carousel__overlay-title">
+                  {{ slide.title }}
+                </h3>
+                <p v-if="slide.description" class="ww-carousel__overlay-description">
+                  {{ slide.description }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation arrows -->
+        <div v-if="content.showArrows !== false && totalSlides > 1">
+          <!-- Previous button -->
+          <button
+            @click="previousSlide"
+            :disabled="currentIndex === 0 && !content.loop"
+            :class="navPrevClasses"
+            :aria-label="'Previous slide'"
+          >
+            <svg class="ww-carousel__nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <!-- Next button -->
+          <button
+            @click="nextSlide"
+            :disabled="currentIndex === totalSlides - 1 && !content.loop"
+            :class="navNextClasses"
+            :aria-label="'Next slide'"
+          >
+            <svg class="ww-carousel__nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Indicators/Dots -->
       <div
-        ref="slidesContainer"
-        :class="[
-          'carousel-slides',
-          {
-            'carousel-slides-sm': content.height === 'sm',
-            'carousel-slides-md': content.height === 'md' || !content.height,
-            'carousel-slides-lg': content.height === 'lg',
-            'carousel-slides-xl': content.height === 'xl'
-          }
-        ]"
-        :style="{
-          transform: `translateX(-${currentIndex * 100}%)`,
-          width: `${totalSlides * 100}%`
-        }"
+        v-if="content.showIndicators !== false && totalSlides > 1"
+        class="ww-carousel__indicators"
       >
-        <!-- Slides -->
-        <div
+        <button
           v-for="(slide, index) in content.slides || []"
-          :key="slide.id || index"
-          class="carousel-slide"
-          :style="{ width: `${100 / totalSlides}%` }"
-        >
-          <!-- Image slide -->
-          <img
-            v-if="slide.type === 'image' || !slide.type"
-            :src="slide.src"
-            :alt="slide.alt || slide.title || 'Slide image'"
-            :class="[
-              'carousel-image',
-              slide.imageClass
-            ]"
-            @click="handleSlideClick(slide, index)"
-          />
-          
-          <!-- Video slide -->
-          <video
-            v-else-if="slide.type === 'video'"
-            :src="slide.src"
-            :class="[
-              'carousel-video',
-              slide.videoClass
-            ]"
-            :controls="slide.showControls !== false"
-            :autoplay="slide.autoplay === true"
-            :muted="slide.muted !== false"
-            :loop="slide.loop === true"
-            @click="handleSlideClick(slide, index)"
-          />
-          
-          <!-- Custom content slide -->
-          <div
-            v-else-if="slide.type === 'content'"
-            :class="[
-              'carousel-content',
-              slide.contentClass
-            ]"
-            :style="slide.contentStyle"
-            @click="handleSlideClick(slide, index)"
-          >
-            <div class="carousel-content-inner">
-              <h3 v-if="slide.title" class="carousel-content-title">
-                {{ slide.title }}
-              </h3>
-              <p v-if="slide.description" class="carousel-content-description">
-                {{ slide.description }}
-              </p>
-              <div v-if="slide.htmlContent" v-html="slide.htmlContent" />
-              
-              <!-- Action button -->
-              <button
-                v-if="slide.actionLabel"
-                @click.stop="handleSlideAction(slide, index)"
-                :class="[
-                  'carousel-action-button',
-                  {
-                    'carousel-action-outline': slide.actionVariant === 'outline',
-                    'carousel-action-secondary': slide.actionVariant === 'secondary',
-                    'carousel-action-ghost': slide.actionVariant === 'ghost',
-                    'carousel-action-primary': !slide.actionVariant
-                  }
-                ]"
-              >
-                {{ slide.actionLabel }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Slide overlay -->
-          <div
-            v-if="slide.overlay && (slide.title || slide.description)"
-            :class="[
-              'carousel-overlay',
-              slide.overlayClass
-            ]"
-          >
-            <div class="carousel-overlay-content">
-              <h3 v-if="slide.title" class="carousel-overlay-title">
-                {{ slide.title }}
-              </h3>
-              <p v-if="slide.description" class="carousel-overlay-description">
-                {{ slide.description }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Navigation arrows -->
-      <div v-if="content.showArrows !== false && totalSlides > 1">
-        <!-- Previous button -->
-        <button
-          @click="previousSlide"
-          :disabled="currentIndex === 0 && !content.loop"
-          class="carousel-nav carousel-nav-prev"
-          :aria-label="'Previous slide'"
-        >
-          <svg class="carousel-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <!-- Next button -->
-        <button
-          @click="nextSlide"
-          :disabled="currentIndex === totalSlides - 1 && !content.loop"
-          class="carousel-nav carousel-nav-next"
-          :aria-label="'Next slide'"
-        >
-          <svg class="carousel-nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Indicators/Dots -->
-    <div
-      v-if="content.showIndicators !== false && totalSlides > 1"
-      class="carousel-indicators"
-    >
-      <button
-        v-for="(slide, index) in content.slides || []"
-        :key="`indicator-${index}`"
-        @click="goToSlide(index)"
-        :class="[
-          'carousel-indicator',
-          { 'carousel-indicator-active': index === currentIndex }
-        ]"
-        :aria-label="`Go to slide ${index + 1}`"
-      />
-    </div>
-
-    <!-- Thumbnails -->
-    <div
-      v-if="content.showThumbnails && totalSlides > 1"
-      class="carousel-thumbnails"
-    >
-      <button
-        v-for="(slide, index) in content.slides || []"
-        :key="`thumb-${index}`"
-        @click="goToSlide(index)"
-        :class="[
-          'carousel-thumbnail',
-          { 'carousel-thumbnail-active': index === currentIndex }
-        ]"
-      >
-        <img
-          v-if="slide.thumbnail || (slide.type === 'image' || !slide.type)"
-          :src="slide.thumbnail || slide.src"
-          :alt="`Thumbnail ${index + 1}`"
-          class="carousel-thumbnail-image"
+          :key="`indicator-${index}`"
+          @click="goToSlide(index)"
+          :class="indicatorClasses(index)"
+          :aria-label="`Go to slide ${index + 1}`"
         />
-        <div
-          v-else
-          class="carousel-thumbnail-placeholder"
-        >
-          {{ index + 1 }}
-        </div>
-      </button>
-    </div>
+      </div>
 
-    <!-- Auto-play controls -->
-    <div
-      v-if="content.autoPlay && content.showPlayPause"
-      class="carousel-play-pause"
-    >
-      <button
-        @click="toggleAutoPlay"
-        class="carousel-play-pause-button"
-        :aria-label="isPlaying ? 'Pause' : 'Play'"
+      <!-- Thumbnails -->
+      <div
+        v-if="content.showThumbnails && totalSlides > 1"
+        class="ww-carousel__thumbnails"
       >
-        <svg v-if="isPlaying" class="carousel-play-pause-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6" />
-        </svg>
-        <svg v-else class="carousel-play-pause-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z" />
-        </svg>
-      </button>
+        <button
+          v-for="(slide, index) in content.slides || []"
+          :key="`thumb-${index}`"
+          @click="goToSlide(index)"
+          :class="thumbnailClasses(index)"
+        >
+          <img
+            v-if="slide.thumbnail || (slide.type === 'image' || !slide.type)"
+            :src="slide.thumbnail || slide.src"
+            :alt="`Thumbnail ${index + 1}`"
+            class="ww-carousel__thumbnail-image"
+          />
+          <div
+            v-else
+            class="ww-carousel__thumbnail-placeholder"
+          >
+            {{ index + 1 }}
+          </div>
+        </button>
+      </div>
+
+      <!-- Auto-play controls -->
+      <div
+        v-if="content.autoPlay && content.showPlayPause"
+        class="ww-carousel__play-pause"
+      >
+        <button
+          @click="toggleAutoPlay"
+          class="ww-carousel__play-pause-button"
+          :aria-label="isPlaying ? 'Pause' : 'Play'"
+        >
+          <svg v-if="isPlaying" class="ww-carousel__play-pause-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6" />
+          </svg>
+          <svg v-else class="ww-carousel__play-pause-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z" />
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -231,11 +199,12 @@ export default {
         height: 'md'
       })
     },
-    wwEditorState: {
-      type: Object,
-      default: () => ({})
-    }
+    wwElementState: { type: Object, required: true },
+    /* wwEditor:start */
+    wwEditorState: { type: Object, required: true },
+    /* wwEditor:end */
   },
+  emits: ['trigger-event'],
   data() {
     return {
       currentIndex: 0,
@@ -246,6 +215,34 @@ export default {
   computed: {
     totalSlides() {
       return this.content.slides ? this.content.slides.length : 0
+    },
+    
+    carouselClasses() {
+      return 'ww-carousel__root'
+    },
+    
+    viewportClasses() {
+      return 'ww-carousel__viewport'
+    },
+    
+    slidesClasses() {
+      const height = this.content.height || 'md'
+      return [
+        'ww-carousel__slides',
+        `ww-carousel__slides--${height}`
+      ]
+    },
+    
+    slideClasses() {
+      return 'ww-carousel__slide'
+    },
+    
+    navPrevClasses() {
+      return 'ww-carousel__nav ww-carousel__nav--prev'
+    },
+    
+    navNextClasses() {
+      return 'ww-carousel__nav ww-carousel__nav--next'
     }
   },
   watch: {
@@ -274,6 +271,43 @@ export default {
     document.removeEventListener('keydown', this.handleKeyDown)
   },
   methods: {
+    imageClasses(slide) {
+      return ['ww-carousel__image', slide.imageClass].filter(Boolean)
+    },
+    
+    videoClasses(slide) {
+      return ['ww-carousel__video', slide.videoClass].filter(Boolean)
+    },
+    
+    contentSlideClasses(slide) {
+      return ['ww-carousel__content', slide.contentClass].filter(Boolean)
+    },
+    
+    actionButtonClasses(slide) {
+      const variant = slide.actionVariant || 'primary'
+      return [
+        'ww-carousel__action-button',
+        `ww-carousel__action-button--${variant}`
+      ]
+    },
+    
+    overlayClasses(slide) {
+      return ['ww-carousel__overlay', slide.overlayClass].filter(Boolean)
+    },
+    
+    indicatorClasses(index) {
+      return [
+        'ww-carousel__indicator',
+        { 'ww-carousel__indicator--active': index === this.currentIndex }
+      ]
+    },
+    
+    thumbnailClasses(index) {
+      return [
+        'ww-carousel__thumbnail',
+        { 'ww-carousel__thumbnail--active': index === this.currentIndex }
+      ]
+    },
 
     startAutoPlay() {
       if (this.content.autoPlay && this.totalSlides > 1) {
@@ -351,7 +385,7 @@ export default {
       })
     },
 
-    handleSlideClick(slide, index) {
+    handleSlideClick(slide, index, event) {
       this.$emit('trigger-event', {
         domEvent: event,
         value: {
@@ -362,7 +396,7 @@ export default {
       })
     },
 
-    handleSlideAction(slide, index) {
+    handleSlideAction(slide, index, event) {
       this.$emit('trigger-event', {
         domEvent: event,
         value: {
@@ -375,7 +409,12 @@ export default {
     },
 
     handleClick(domEvent) {
-      // Base click handler if needed
+      this.$emit('trigger-event', {
+        domEvent,
+        value: {
+          content: this.content
+        }
+      })
     },
 
     // Handle keyboard navigation
@@ -401,27 +440,23 @@ export default {
 }
 </script>
 
-<style scoped>
-/* Shadcn UI CSS Variables */
+<style>
+/* ===== SHADCN UI CSS VARIABLES ===== */
 :root {
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 98%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
   --primary: 222.2 47.4% 11.2%;
   --primary-foreground: 210 40% 98%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215.4 16.3% 46.9%;
   --accent: 210 40% 96%;
   --accent-foreground: 222.2 84% 4.9%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
   --ring: 222.2 84% 4.9%;
   --radius: 0.5rem;
 }
@@ -429,27 +464,23 @@ export default {
 .dark {
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
   --primary: 210 40% 98%;
   --primary-foreground: 222.2 47.4% 11.2%;
   --secondary: 217.2 32.6% 17.5%;
   --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
   --accent: 217.2 32.6% 17.5%;
   --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
   --ring: 212.7 26.8% 83.9%;
 }
 
 /* Root container */
-.carousel-root {
+.ww-carousel__root {
   position: relative;
   width: 100%;
   background-color: hsl(var(--background));
@@ -457,36 +488,36 @@ export default {
 }
 
 /* Viewport */
-.carousel-viewport {
+.ww-carousel__viewport {
   position: relative;
   overflow: hidden;
   border-radius: calc(var(--radius) + 2px);
 }
 
 /* Slides container */
-.carousel-slides {
+.ww-carousel__slides {
   display: flex;
   transition: transform 0.3s ease-in-out;
 }
 
-.carousel-slides-sm {
+.ww-carousel__slides--sm {
   height: 12rem; /* 192px */
 }
 
-.carousel-slides-md {
+.ww-carousel__slides--md {
   height: 16rem; /* 256px */
 }
 
-.carousel-slides-lg {
+.ww-carousel__slides--lg {
   height: 20rem; /* 320px */
 }
 
-.carousel-slides-xl {
+.ww-carousel__slides--xl {
   height: 24rem; /* 384px */
 }
 
 /* Individual slide */
-.carousel-slide {
+.ww-carousel__slide {
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -498,19 +529,19 @@ export default {
 }
 
 /* Slide content types */
-.carousel-image {
+.ww-carousel__image {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.carousel-video {
+.ww-carousel__video {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.carousel-content {
+.ww-carousel__content {
   width: 100%;
   height: 100%;
   display: flex;
@@ -520,25 +551,25 @@ export default {
   text-align: center;
 }
 
-.carousel-content-inner {
+.ww-carousel__content-inner {
   max-width: 100%;
 }
 
-.carousel-content-title {
+.ww-carousel__content-title {
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
   color: hsl(var(--foreground));
 }
 
-.carousel-content-description {
+.ww-carousel__content-description {
   font-size: 1.125rem;
   margin-bottom: 1.5rem;
   color: hsl(var(--muted-foreground));
 }
 
 /* Action button */
-.carousel-action-button {
+.ww-carousel__action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -553,52 +584,52 @@ export default {
   padding: 0 1rem;
 }
 
-.carousel-action-button:focus-visible {
+.ww-carousel__action-button:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
-.carousel-action-primary {
+.ww-carousel__action-button--primary {
   background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
 }
 
-.carousel-action-primary:hover {
+.ww-carousel__action-button--primary:hover {
   background-color: hsl(var(--primary) / 0.9);
 }
 
-.carousel-action-outline {
+.ww-carousel__action-button--outline {
   border: 1px solid hsl(var(--input));
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
 
-.carousel-action-outline:hover {
+.ww-carousel__action-button--outline:hover {
   background-color: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
 }
 
-.carousel-action-secondary {
+.ww-carousel__action-button--secondary {
   background-color: hsl(var(--secondary));
   color: hsl(var(--secondary-foreground));
 }
 
-.carousel-action-secondary:hover {
+.ww-carousel__action-button--secondary:hover {
   background-color: hsl(var(--secondary) / 0.8);
 }
 
-.carousel-action-ghost {
+.ww-carousel__action-button--ghost {
   background: none;
   color: hsl(var(--foreground));
 }
 
-.carousel-action-ghost:hover {
+.ww-carousel__action-button--ghost:hover {
   background-color: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
 }
 
 /* Overlay */
-.carousel-overlay {
+.ww-carousel__overlay {
   position: absolute;
   inset: 0;
   background-color: rgb(0 0 0 / 0.4);
@@ -607,23 +638,23 @@ export default {
   padding: 1.5rem;
 }
 
-.carousel-overlay-content {
+.ww-carousel__overlay-content {
   color: white;
 }
 
-.carousel-overlay-title {
+.ww-carousel__overlay-title {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
-.carousel-overlay-description {
+.ww-carousel__overlay-description {
   font-size: 0.875rem;
   opacity: 0.9;
 }
 
 /* Navigation arrows */
-.carousel-nav {
+.ww-carousel__nav {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
@@ -641,37 +672,37 @@ export default {
   cursor: pointer;
 }
 
-.carousel-nav:hover {
+.ww-carousel__nav:hover {
   background-color: hsl(var(--background));
 }
 
-.carousel-nav:disabled {
+.ww-carousel__nav:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.carousel-nav-prev {
+.ww-carousel__nav--prev {
   left: 1rem;
 }
 
-.carousel-nav-next {
+.ww-carousel__nav--next {
   right: 1rem;
 }
 
-.carousel-nav-icon {
+.ww-carousel__nav-icon {
   width: 1rem;
   height: 1rem;
 }
 
 /* Indicators */
-.carousel-indicators {
+.ww-carousel__indicators {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
   margin-top: 1rem;
 }
 
-.carousel-indicator {
+.ww-carousel__indicator {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
@@ -681,16 +712,16 @@ export default {
   background-color: hsl(var(--muted));
 }
 
-.carousel-indicator:hover {
+.ww-carousel__indicator:hover {
   background-color: hsl(var(--muted-foreground) / 0.2);
 }
 
-.carousel-indicator-active {
+.ww-carousel__indicator--active {
   background-color: hsl(var(--primary));
 }
 
 /* Thumbnails */
-.carousel-thumbnails {
+.ww-carousel__thumbnails {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
@@ -698,7 +729,7 @@ export default {
   overflow-x: auto;
 }
 
-.carousel-thumbnail {
+.ww-carousel__thumbnail {
   flex-shrink: 0;
   width: 4rem;
   height: 4rem;
@@ -711,21 +742,21 @@ export default {
   padding: 0;
 }
 
-.carousel-thumbnail:hover {
+.ww-carousel__thumbnail:hover {
   border-color: hsl(var(--muted-foreground) / 0.2);
 }
 
-.carousel-thumbnail-active {
+.ww-carousel__thumbnail--active {
   border-color: hsl(var(--primary));
 }
 
-.carousel-thumbnail-image {
+.ww-carousel__thumbnail-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.carousel-thumbnail-placeholder {
+.ww-carousel__thumbnail-placeholder {
   width: 100%;
   height: 100%;
   display: flex;
@@ -737,14 +768,14 @@ export default {
 }
 
 /* Play/Pause controls */
-.carousel-play-pause {
+.ww-carousel__play-pause {
   position: absolute;
   bottom: 1rem;
   right: 1rem;
   z-index: 10;
 }
 
-.carousel-play-pause-button {
+.ww-carousel__play-pause-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -758,11 +789,11 @@ export default {
   cursor: pointer;
 }
 
-.carousel-play-pause-button:hover {
+.ww-carousel__play-pause-button:hover {
   background-color: hsl(var(--background));
 }
 
-.carousel-play-pause-icon {
+.ww-carousel__play-pause-icon {
   width: 1rem;
   height: 1rem;
 }
